@@ -1,22 +1,43 @@
 // ─────────────────────────────────────────────────────────────
 // js/leave-requests.js — หน้าที่ 1 รายการใบลา
-// สัปดาห์ที่ 6 (ต้นสัปดาห์): อ่านจากข้อมูลปลอมใน js/data.js
+// สัปดาห์ที่ 6: อ่านข้อมูลจริงจาก Firestore (โฟลเดอร์ leaveRequests) — ตัว R ตัวเดียว
 // ─────────────────────────────────────────────────────────────
 
-(function () {
+import { db } from "./firebase-config.js";
+import { getCurrentUser } from "./auth-helpers.js";
+import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+(async function () {
   var กล่อง = document.getElementById("ผลลัพธ์");
 
-  // ใบลาจากข้อมูลปลอม บวกกับใบที่เพิ่งยื่นในหน้าถัดไป
-  // (สัปดาห์นี้ยังไม่ต่อฐานข้อมูล ใบที่ยื่นใหม่จึงหายเมื่อปิดเบราว์เซอร์)
-  var ใบลาที่ยื่นใหม่ = JSON.parse(sessionStorage.getItem("ใบลาที่ยื่นใหม่") || "[]");
-  var ใบลาทั้งหมด = window.LEAVE_DATA.leaveRequests.concat(ใบลาที่ยื่นใหม่);
-
-  // ถ้ามีสถานะติดมาท้าย URL ให้กรองเฉพาะสถานะนั้น
+  // ถ้ามีสถานะติดมาท้าย URL ให้กรองเฉพาะสถานะนั้น (ใช้เมื่อกดมาจากกล่องตัวเลขในหน้าแดชบอร์ด)
   var สถานะที่กรอง = ค่าจากURL("status");
   if (สถานะที่กรอง) {
-    ใบลาทั้งหมด = ใบลาทั้งหมด.filter(function (ใบ) { return ใบ.status === สถานะที่กรอง; });
     document.querySelector(".subtitle").textContent =
       "กำลังแสดงเฉพาะใบลาที่สถานะ " + สถานะที่กรอง + " · กดเมนู รายการใบลา เพื่อดูทั้งหมด";
+  }
+
+  var ใบลาทั้งหมด = [];
+  try {
+    // ผู้ขอลา (employee) เห็นเฉพาะใบของตัวเอง · ผู้อนุมัติ/ฝ่ายบุคคลเห็นทุกใบ
+    // ต้องกรองด้วย where ตั้งแต่ตอน query เพราะ Security Rules ปฏิเสธ list ที่ไม่กรองทั้งหมด
+    var ผู้ใช้ = await getCurrentUser();
+    var คำสั่งค้นหา = (ผู้ใช้ && ผู้ใช้.role === "employee")
+      ? query(collection(db, "leaveRequests"), where("requesterId", "==", ผู้ใช้.uid))
+      : collection(db, "leaveRequests");
+
+    var ผลลัพธ์ = await getDocs(คำสั่งค้นหา);
+    ผลลัพธ์.forEach(function (เอกสาร) {
+      ใบลาทั้งหมด.push(Object.assign({ id: เอกสาร.id }, เอกสาร.data()));
+    });
+  } catch (err) {
+    console.error(err);
+    กล่อง.innerHTML = "<p>โหลดข้อมูลจาก Firestore ไม่สำเร็จ — ลองรีเฟรชหน้าอีกครั้ง</p>";
+    return;
+  }
+
+  if (สถานะที่กรอง) {
+    ใบลาทั้งหมด = ใบลาทั้งหมด.filter(function (ใบ) { return ใบ.status === สถานะที่กรอง; });
   }
 
   แสดงตาราง(ใบลาทั้งหมด);

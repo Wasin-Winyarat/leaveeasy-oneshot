@@ -21,6 +21,20 @@ desktop.ini
 .idea/
 
 
+# ── 🔑 ของลับ ห้ามหลุดเด็ดขาด ──
+# API key ของ OpenRouter (สัปดาห์ที่ 8) และค่าตั้งค่าที่เป็นความลับอื่น ๆ
+config.js
+js/config.js
+secrets.js
+.env
+.env.local
+.env.*
+
+# ไฟล์คีย์ระดับผู้ดูแลของ Firebase (ต่างจาก js/firebase-config.js ที่เป็นค่า public ฝั่ง client)
+*serviceAccount*.json
+*firebase-adminsdk*.json
+
+
 # ─────────────────────────────────────────────────────────────
 # ✅ วิธีตรวจว่าใช้ได้จริง — ก่อน push ทุกครั้ง พิมพ์บอก Claude ว่า
 #

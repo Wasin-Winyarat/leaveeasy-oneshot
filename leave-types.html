@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <script type="module">
+    import { getCurrentUser } from "./js/auth-helpers.js";
+    var ผู้ใช้ = await getCurrentUser();
+    if (!ผู้ใช้) location.href = "login.html";
+    // หน้านี้เป็นของฝ่ายบุคคล (hr) เท่านั้น — สัปดาห์ที่ 8 ตามหัวข้อ 4 หน้าที่ 4 ของสเปก
+    else if (ผู้ใช้.role !== "hr") location.href = "index.html";
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>จัดการประเภทการลา · LeaveEasy</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="js/util.js" defer></script>
-  <script src="js/nav.js" defer></script>
-  <script src="js/data.js" defer></script>
-  <script src="js/leave-types.js" defer></script>
+  <script type="module" src="js/nav.js"></script>
+  <script type="module" src="js/leave-types.js"></script>
 </head>
 <body>
   <div id="nav"></div>

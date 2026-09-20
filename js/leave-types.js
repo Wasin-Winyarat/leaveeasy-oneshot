@@ -1,24 +1,55 @@
 // ─────────────────────────────────────────────────────────────
-// js/leave-types.js — หน้าที่ 4 จัดการประเภทการลา
-// สัปดาห์ที่ 6 (ต้นสัปดาห์): เพิ่ม แก้ ลบ ในหน่วยความจำเท่านั้น
+// js/leave-types.js — หน้าที่ 4 จัดการประเภทการลา (Firestore)
+// เพิ่ม แก้ ลบ ประเภทการลาโดยบันทึกจริงลงใน Firestore
 // ─────────────────────────────────────────────────────────────
 
-(function () {
-  var รายการ = window.LEAVE_DATA.leaveTypes.slice();   // ทำสำเนาไว้แก้
-  var ที่วางตาราง = document.getElementById("ตารางประเภท");
-  var ช่องชื่อใหม่ = document.getElementById("ชื่อประเภทใหม่");
-  var กล่องเตือน = document.getElementById("เตือนประเภท");
+import { db } from "./firebase-config.js";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-  วาดตาราง();
-  document.getElementById("ปุ่มเพิ่ม").addEventListener("click", เพิ่มประเภท);
+(async function () {
+  const ที่วางตาราง = document.getElementById("ตารางประเภท");
+  const ช่องชื่อใหม่ = document.getElementById("ชื่อประเภทใหม่");
+  const กล่องเตือน = document.getElementById("เตือนประเภท");
+  const ปุ่มเพิ่ม = document.getElementById("ปุ่มเพิ่ม");
 
-  function วาดตาราง() {
+  // โหลดรายการจาก Firestore เป็นครั้งแรก
+  await โหลดและวาด();
+
+  // ตั้งการทำงานของปุ่มเพิ่ม
+  ปุ่มเพิ่ม.addEventListener("click", เพิ่มประเภท);
+
+  async function โหลดและวาด() {
+    try {
+      const snapshot = await getDocs(collection(db, "leaveTypes"));
+      const รายการ = [];
+      snapshot.forEach((docSnapshot) => {
+        รายการ.push({
+          id: docSnapshot.id,
+          name: docSnapshot.data().name
+        });
+      });
+
+      วาดตาราง(รายการ);
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดในการโหลดประเภทการลา:", error);
+      ที่วางตาราง.innerHTML = "<p style='color: red;'>⚠️ ไม่สามารถโหลดข้อมูลได้ ลองรีเฟรชหน้า</p>";
+    }
+  }
+
+  function วาดตาราง(รายการ) {
     if (รายการ.length === 0) {
       ที่วางตาราง.innerHTML = "<p>ยังไม่มีประเภทการลาในระบบ</p>";
       return;
     }
 
-    var html = "<table><thead><tr><th>ชื่อประเภทการลา</th><th>จัดการ</th></tr></thead><tbody>";
+    let html = "<table><thead><tr><th>ชื่อประเภทการลา</th><th>จัดการ</th></tr></thead><tbody>";
     รายการ.forEach(function (ประเภท) {
       html +=
         "<tr><td>" + esc(ประเภท.name) + "</td><td>" +
@@ -29,6 +60,7 @@
     html += "</tbody></table>";
     ที่วางตาราง.innerHTML = html;
 
+    // เอา event listener ไปติดกับปุ่มแก้และลบในตาราง
     ที่วางตาราง.querySelectorAll("[data-edit]").forEach(function (ปุ่ม) {
       ปุ่ม.addEventListener("click", function () { แก้ประเภท(ปุ่ม.dataset.edit); });
     });
@@ -37,32 +69,96 @@
     });
   }
 
-  function เพิ่มประเภท() {
-    var ชื่อ = ช่องชื่อใหม่.value.trim();
+  async function เพิ่มประเภท() {
+    const ชื่อ = ช่องชื่อใหม่.value.trim();
     if (!ชื่อ) {
       กล่องเตือน.textContent = "⚠️ พิมพ์ชื่อประเภทการลาก่อน จึงจะเพิ่มได้";
       กล่องเตือน.classList.remove("hidden");
       return;
     }
-    กล่องเตือน.classList.add("hidden");
-    รายการ.push({ id: "lt-ใหม่-" + Date.now(), name: ชื่อ });
-    ช่องชื่อใหม่.value = "";
-    วาดตาราง();
+
+    try {
+      // ปิดข้อความเตือนเมื่อเพิ่มสำเร็จ
+      กล่องเตือน.classList.add("hidden");
+
+      // เพิ่มประเภทใหม่ลง Firestore
+      await addDoc(collection(db, "leaveTypes"), { name: ชื่อ });
+
+      // ล้างช่องกรอก
+      ช่องชื่อใหม่.value = "";
+
+      // โหลดรายการใหม่และวาดตารางใหม่
+      await โหลดและวาด();
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดในการเพิ่มประเภท:", error);
+      กล่องเตือน.textContent = "⚠️ ไม่สามารถเพิ่มประเภท ลองใหม่";
+      กล่องเตือน.classList.remove("hidden");
+    }
   }
 
-  function แก้ประเภท(id) {
-    var ประเภท = รายการ.find(function (t) { return t.id === id; });
-    var ชื่อใหม่ = prompt("แก้ชื่อประเภทการลา", ประเภท.name);
-    if (ชื่อใหม่ === null) return;              // กดยกเลิก
-    if (!ชื่อใหม่.trim()) { alert("ชื่อประเภทการลาว่างเปล่าไม่ได้"); return; }
-    ประเภท.name = ชื่อใหม่.trim();
-    วาดตาราง();
+  async function แก้ประเภท(id) {
+    try {
+      // ดึงข้อมูลประเภทปัจจุบันจาก Firestore
+      const snapshot = await getDocs(collection(db, "leaveTypes"));
+      let ประเภท = null;
+      snapshot.forEach((docSnapshot) => {
+        if (docSnapshot.id === id) {
+          ประเภท = { id: docSnapshot.id, name: docSnapshot.data().name };
+        }
+      });
+
+      if (!ประเภท) {
+        alert("ไม่พบประเภทการลานี้");
+        return;
+      }
+
+      // ถามชื่อใหม่
+      const ชื่อใหม่ = prompt("แก้ชื่อประเภทการลา", ประเภท.name);
+      if (ชื่อใหม่ === null) return; // ยกเลิก
+
+      if (!ชื่อใหม่.trim()) {
+        alert("ชื่อประเภทการลาว่างเปล่าไม่ได้");
+        return;
+      }
+
+      // อัปเดต Firestore
+      await updateDoc(doc(db, "leaveTypes", id), { name: ชื่อใหม่.trim() });
+
+      // โหลดรายการใหม่และวาดตารางใหม่
+      await โหลดและวาด();
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดในการแก้ประเภท:", error);
+      alert("⚠️ ไม่สามารถแก้ประเภท");
+    }
   }
 
-  function ลบประเภท(id) {
-    var ประเภท = รายการ.find(function (t) { return t.id === id; });
-    if (!confirm('ยืนยันการลบประเภท "' + ประเภท.name + '" หรือไม่')) return;
-    รายการ = รายการ.filter(function (t) { return t.id !== id; });
-    วาดตาราง();
+  async function ลบประเภท(id) {
+    try {
+      // ดึงข้อมูลประเภทปัจจุบันเพื่อแสดงชื่อในหน้าต่างยืนยัน
+      const snapshot = await getDocs(collection(db, "leaveTypes"));
+      let ประเภท = null;
+      snapshot.forEach((docSnapshot) => {
+        if (docSnapshot.id === id) {
+          ประเภท = { id: docSnapshot.id, name: docSnapshot.data().name };
+        }
+      });
+
+      if (!ประเภท) {
+        alert("ไม่พบประเภทการลานี้");
+        return;
+      }
+
+      // ถามยืนยัน
+      if (!confirm('ยืนยันการลบประเภท "' + ประเภท.name + '" หรือไม่')) return;
+
+      // ลบจาก Firestore
+      await deleteDoc(doc(db, "leaveTypes", id));
+
+      // โหลดรายการใหม่และวาดตารางใหม่
+      await โหลดและวาด();
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดในการลบประเภท:", error);
+      alert("⚠️ ไม่สามารถลบประเภท");
+    }
   }
 })();

@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <script type="module">
+    import { getCurrentUser } from "./js/auth-helpers.js";
+    var ผู้ใช้ = await getCurrentUser();
+    if (!ผู้ใช้) location.href = "login.html";
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>รายการใบลา · LeaveEasy</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="js/util.js" defer></script>
-  <script src="js/nav.js" defer></script>
-  <script src="js/data.js" defer></script>
-  <script src="js/leave-requests.js" defer></script>
+  <script type="module" src="js/nav.js"></script>
+  <script type="module" src="js/leave-requests.js"></script>
 </head>
 <body>
   <div id="nav"></div>

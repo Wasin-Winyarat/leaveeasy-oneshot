@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────
+    // ตัวช่วยกลาง (helper functions) — ใช้ร่วมกันทุก match block
+    // ─────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // role ของผู้ใช้ที่ล็อกอินอยู่ เก็บใน users/{uid}.role ไม่ใช่ใน Auth token
+    // ต้อง get() มาเทียบเสมอ (มี performance cost แต่เป็นวิธีที่ถูกต้องตามสเปก)
+    function currentRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isManager() {
+      return isSignedIn() && currentRole() == 'manager';
+    }
+
+    function isHr() {
+      return isSignedIn() && currentRole() == 'hr';
+    }
+
+    function isManagerOrHr() {
+      return isManager() || isHr();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // users/{uid} — โปรไฟล์ผู้ใช้ (หัวข้อ 2, 5.2)
+    // ทุกคนที่ล็อกอินอ่านได้ทุกเอกสาร (ใช้ดึง requesterName/approverName/authorName
+    // มาแสดงแบบ denormalize) แต่แก้ไขได้เฉพาะเอกสารของตัวเอง และห้ามอัปเกรด role ตัวเอง
+    // ─────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isSignedIn();
+
+      // สมัครสมาชิกใหม่: เขียนได้เฉพาะเอกสารของตัวเอง และ role ต้องเป็น employee เสมอ
+      // (กันคนสมัครแล้วตั้งตัวเองเป็น manager/hr ตั้งแต่ตอนสมัคร)
+      allow create: if isOwner(uid) && request.resource.data.role == 'employee';
+
+      // แก้ไขข้อมูลตัวเองได้ (เช่นชื่อ) แต่ห้ามแก้ไข field role ของตัวเองเด็ดขาด
+      // (กัน employee สวมรอยอัปเกรดสิทธิ์ตัวเองเป็น hr) — สเปกไม่ได้ให้สิทธิ์ hr
+      // แก้ role ของคนอื่นผ่านหน้าเว็บในโมดูลนี้ จึงไม่มีข้อยกเว้นให้ hr ที่นี่
+      allow update: if isOwner(uid) && request.resource.data.role == resource.data.role;
+
+      // ไม่มีฟีเจอร์ลบผู้ใช้ในสเปกโมดูลนี้
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // leaveTypes/{id} — ประเภทการลา (หัวข้อ 2, 5.2)
+    // ทุกคนที่ล็อกอินอ่านได้ (หน้ายื่นใบลาใหม่ทุก role ต้องอ่านมาเติม dropdown)
+    // เพิ่ม/แก้/ลบ ได้เฉพาะ hr เท่านั้น ตามตารางสิทธิ์
+    // ─────────────────────────────────────────────────────────
+    match /leaveTypes/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isHr();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // leaveRequests/{id} — ใบขอลา (หัวข้อ 2, 5.2, 6)
+    // ─────────────────────────────────────────────────────────
+    match /leaveRequests/{id} {
+
+      // ยื่นใบลาใหม่: requesterId ต้องเป็น uid ของคนที่ล็อกอินเอง (กันปลอมตัวยื่นแทนคนอื่น)
+      // และใบใหม่ทุกใบต้องเริ่มที่สถานะ รอพิจารณา เสมอ ตามหัวข้อ 6
+      allow create: if isSignedIn()
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.status == 'รอพิจารณา';
+
+      // อ่าน (ทั้งเปิดทีละใบและอ่านทั้งรายการ): employee เห็นเฉพาะใบของตัวเอง
+      // manager/hr เห็นทุกใบ ตามตารางสิทธิ์
+      allow read: if isManagerOrHr() || isOwner(resource.data.requesterId);
+
+      // เปลี่ยนสถานะ: เฉพาะ manager/hr เท่านั้น (ผู้ขอลาเปลี่ยนสถานะไม่ได้ - หัวข้อ 6)
+      // เปลี่ยนได้ทางเดียวจาก รอพิจารณา -> อนุมัติ/ไม่อนุมัติ เท่านั้น (ใบที่พิจารณาแล้วแก้ต่อไม่ได้)
+      // และต้องแก้เฉพาะช่อง status ห้ามเขียนทับช่องอื่นในไฟล์เดิม
+      allow update: if isManagerOrHr()
+        && resource.data.status == 'รอพิจารณา'
+        && request.resource.data.status in ['อนุมัติ', 'ไม่อนุมัติ']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+
+      // กำหนด/เปลี่ยนผู้อนุมัติ: เฉพาะ hr เท่านั้น ตามตารางสิทธิ์ ("กำหนดผู้อนุมัติให้แต่ละใบ")
+      // แก้เฉพาะ approverId/approverName เท่านั้น ห้ามแตะช่องอื่น
+      allow update: if isHr()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approverId', 'approverName']);
+
+      // ลบใบลา: ลบได้เฉพาะเจ้าของใบเอง และต้องยังเป็น รอพิจารณา เท่านั้น
+      // สเปกไม่ได้ให้สิทธิ์ manager/hr ลบใบของคนอื่น จึงใช้กฎเดียวกันทุก role
+      allow delete: if isOwner(resource.data.requesterId) && resource.data.status == 'รอพิจารณา';
+
+      // ── leaveRequests/{id}/approvals/{approvalId} — ความเห็นการอนุมัติ (subcollection) ──
+      // สิทธิ์อ่าน/เขียนอิงจากสิทธิ์ดูใบลาแม่: เจ้าของใบเอง หรือ manager/hr เท่านั้น
+      match /approvals/{approvalId} {
+        allow read: if isManagerOrHr()
+          || isOwner(get(/databases/$(database)/documents/leaveRequests/$(id)).data.requesterId);
+
+        // เขียนความเห็นเพิ่ม: เจ้าของใบ (ในใบของตัวเอง) หรือ manager/hr (ในทุกใบ)
+        // authorId ต้องเป็น uid ของคนที่ล็อกอินเอง กันปลอมตัวเป็นคนอื่นตอนเขียนความเห็น
+        allow create: if (isManagerOrHr()
+            || isOwner(get(/databases/$(database)/documents/leaveRequests/$(id)).data.requesterId))
+          && request.resource.data.authorId == request.auth.uid;
+
+        // สเปกไม่ได้ให้สิทธิ์แก้ไข/ลบความเห็นที่ส่งไปแล้ว (ถือเป็นบันทึกประวัติ)
+        allow update, delete: if false;
+      }
+    }
+  }
+}

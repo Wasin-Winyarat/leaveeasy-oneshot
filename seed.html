@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <script type="module">
+    import { getCurrentUser } from "./js/auth-helpers.js";
+    var ผู้ใช้ = await getCurrentUser();
+    if (!ผู้ใช้) location.href = "login.html";
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ใส่ข้อมูลตัวอย่าง (Seed) · LeaveEasy</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/nav.js"></script>
+  <script type="module" src="js/seed.js"></script>
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="container">
+    <h1>ใส่ข้อมูลตัวอย่าง (Seed)</h1>
+    <p class="subtitle">
+      กดปุ่มด้านล่างเพื่อใส่ผู้ใช้ 3 คน · ประเภทการลา 3 แบบ · ใบขอลา 5 ใบ · ความเห็นการอนุมัติ
+      ลงใน Firestore จริงตามข้อมูลตัวอย่างในสเปก
+    </p>
+
+    <div class="card">
+      <p class="hint">
+        ใช้รหัสเอกสารคงที่ (u001, lt001, lr001, ap001, …) ผ่าน <code>setDoc</code> —
+        กดปุ่มนี้ซ้ำได้เสมอ ข้อมูลเดิมจะถูกเขียนทับด้วยชุดเดียวกัน ไม่เกิดข้อมูลซ้ำ
+      </p>
+      <div class="btn-row">
+        <button type="button" id="ปุ่มSeed">ใส่ข้อมูลตัวอย่างลง Firestore</button>
+      </div>
+      <div id="สถานะข้อความ" class="alert hidden" style="margin-top:14px"></div>
+    </div>
+
+    <div class="btn-row">
+      <a class="btn btn-ghost" href="leave-requests.html">ไปดูรายการใบลา</a>
+      <a class="btn btn-ghost" href="index.html">← กลับหน้าแรก</a>
+    </div>
+  </div>
+</body>
+</html>

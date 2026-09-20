@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <script type="module">
+    import { getCurrentUser } from "./js/auth-helpers.js";
+    var ผู้ใช้ = await getCurrentUser();
+    if (!ผู้ใช้) location.href = "login.html";
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>แดชบอร์ดสรุป · LeaveEasy</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/util.js" defer></script>
+  <script type="module" src="js/nav.js"></script>
+  <script src="js/data.js" defer></script>
+  <script src="js/dashboard.js" defer></script>
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="container">
+    <h1>แดชบอร์ดสรุป</h1>
+    <p class="subtitle">
+      ภาพรวมใบลาตามสถานะ · หน้านี้เป็นโครงหน้าจาก prototype การต่อข้อมูลจริงเป็นงาน Module 3
+    </p>
+
+    <div id="กล่องสถิติ" class="stat-row"></div>
+
+    <h2>ใบลาล่าสุด 5 รายการ</h2>
+    <div id="กล่องล่าสุด" class="card">
+      <p>กำลังโหลดข้อมูล…</p>
+    </div>
+
+    <div class="btn-row">
+      <a class="btn btn-ghost" href="leave-requests.html">ไปหน้ารายการใบลาทั้งหมด</a>
+      <a class="btn btn-ghost" href="index.html">← กลับหน้าแรก</a>
+    </div>
+  </div>
+</body>
+</html>

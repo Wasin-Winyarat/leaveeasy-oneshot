@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <script type="module">
+    import { getCurrentUser } from "./js/auth-helpers.js";
+    var ผู้ใช้ = await getCurrentUser();
+    if (!ผู้ใช้) location.href = "login.html";
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>รายละเอียดใบลา · LeaveEasy</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="js/util.js" defer></script>
-  <script src="js/nav.js" defer></script>
-  <script src="js/data.js" defer></script>
-  <script src="js/leave-request-detail.js" defer></script>
+  <script type="module" src="js/nav.js"></script>
+  <script type="module" src="js/leave-request-detail.js"></script>
 </head>
 <body>
   <div id="nav"></div>
@@ -30,6 +34,10 @@
       <div class="btn-row">
         <button type="button" id="ปุ่มส่งความเห็น">ส่งความเห็น</button>
       </div>
+    </div>
+
+    <div class="btn-row hidden" id="กล่องปุ่มลบ">
+      <button type="button" class="btn-danger" id="ปุ่มลบใบลา">ลบใบลานี้</button>
     </div>
 
     <div class="btn-row">
