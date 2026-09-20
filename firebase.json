@@ -11,7 +11,10 @@
       "firebase.json",
       "**/.*",
       "**/.git/**",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "js/config.js",
+      "**/*serviceAccount*.json",
+      "**/*firebase-adminsdk*.json"
     ]
   }
 }

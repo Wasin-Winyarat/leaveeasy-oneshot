@@ -34,6 +34,11 @@ secrets.js
 *serviceAccount*.json
 *firebase-adminsdk*.json
 
+# ── ไฟล์แคชของ Firebase CLI ตอน deploy (สร้างใหม่ได้เสมอ ไม่ใช่ของโปรเจกต์) ──
+.firebase/
+.firebaserc.local
+firebase-debug.log
+
 
 # ─────────────────────────────────────────────────────────────
 # ✅ วิธีตรวจว่าใช้ได้จริง — ก่อน push ทุกครั้ง พิมพ์บอก Claude ว่า
